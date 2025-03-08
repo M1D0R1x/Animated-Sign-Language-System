@@ -1,5 +1,9 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
+from nltk.corpus.reader import documents
+
 from animated_sign_language_system import views  # Correctly import views from your app
 
 # Custom error handlers
@@ -16,3 +20,5 @@ urlpatterns = [
     path('animation/', views.animation_view, name='animation'),
     path('', views.home_view, name='home'),
 ]
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

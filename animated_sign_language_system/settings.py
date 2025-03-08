@@ -1,6 +1,7 @@
 import os
 import logging
 import nltk
+from django.contrib import staticfiles
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,9 +23,9 @@ SECRET_KEY = '3k7=!d39#4@&5a6to&4==j(c^v0(vv91cj5+9e8+d4&+01jb'
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True  # Change to False in production
+DEBUG = False  # Change to False in production
 
-ALLOWED_HOSTS = []  # Add your production host here
+ALLOWED_HOSTS = ['.vercel.app', '.now.sh', '127.0.0.1']  # Add your production host here
 
 # Application definition
 INSTALLED_APPS = [
@@ -68,10 +69,20 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'animated_sign_language_system.wsgi.application'
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME':'railway',
+        'USER':'postgres',
+        'PASSWORD':'rubXnqkzaIYTFKGDodcIoAqMFMCZXVPV',
+        'HOST':'nozomi.proxy.rlwy.net',
+        'PORT':'31385',
     }
 }
 
@@ -92,7 +103,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -101,9 +112,10 @@ USE_L10N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "assets"),
-]
+
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_build', 'static')
 
 # Logging configuration to track errors and warnings
 LOGGING = {
