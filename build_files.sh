@@ -1,2 +1,4 @@
-pip install -r requirements.txt
-python3.9 manage.py collectstatic
+#!/bin/bash
+pip install --no-cache-dir -r requirements.txt
+python manage.py collectstatic --noinput
+python manage.py migrate

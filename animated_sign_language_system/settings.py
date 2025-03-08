@@ -1,31 +1,20 @@
 import os
 import logging
-import nltk
 from django.contrib import staticfiles
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Set up a specific directory for NLTK data
+# Set up a specific directory for NLTK data (used at runtime if needed)
 NLTK_DATA_DIR = os.path.join(BASE_DIR, 'nltk_data')
-nltk.data.path.append(NLTK_DATA_DIR)
-
-# Download NLTK utilities with error handling
-try:
-    nltk.download('averaged_perceptron_tagger', download_dir=NLTK_DATA_DIR)
-    nltk.download('wordnet', download_dir=NLTK_DATA_DIR)
-    nltk.download('omw-1.4', download_dir=NLTK_DATA_DIR)
-except Exception as e:
-    print(f"Error downloading NLTK resources: {e}")
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '3k7=!d39#4@&5a6to&4==j(c^v0(vv91cj5+9e8+d4&+01jb'
-
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', '3k7=!d39#4@&5a6to&4==j(c^v0(vv91cj5+9e8+d4&+01jb')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False  # Change to False in production
+DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['.vercel.app', '.now.sh', '127.0.0.1']  # Add your production host here
+ALLOWED_HOSTS = ['.vercel.app', '.now.sh', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
@@ -35,9 +24,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'animated_sign_language_system',  # Ensure this is included
+    'animated_sign_language_system',
 ]
-
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -54,7 +42,7 @@ ROOT_URLCONF = 'animated_sign_language_system.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['templates',],
+        'DIRS': ['templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -69,20 +57,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'animated_sign_language_system.wsgi.application'
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-#     }
-# }
+# Database (PostgreSQL from Railway, using environment variables)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME':'railway',
-        'USER':'postgres',
-        'PASSWORD':'rubXnqkzaIYTFKGDodcIoAqMFMCZXVPV',
-        'HOST':'nozomi.proxy.rlwy.net',
-        'PORT':'31385',
+        'NAME': os.getenv('PGDATABASE', 'railway'),
+        'USER': os.getenv('PGUSER', 'postgres'),
+        'PASSWORD': os.getenv('PGPASSWORD', 'rubXnqkzaIYTFKGDodcIoAqMFMCZXVPV'),
+        'HOST': os.getenv('PGHOST', 'nozomi.proxy.rlwy.net'),
+        'PORT': os.getenv('PGPORT', '31385'),
     }
 }
 
@@ -111,11 +94,13 @@ USE_L10N = True
 
 USE_TZ = True
 
+# Static files configuration
 STATIC_URL = '/static/'
-
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_build', 'static')
+# Custom path for synonyms file
+SYNONYM_PATH = os.path.join(BASE_DIR, "synonyms.json")
 
 # Logging configuration to track errors and warnings
 LOGGING = {
@@ -136,5 +121,3 @@ LOGGING = {
         },
     },
 }
-
-SYNONYM_PATH=os.path.join(BASE_DIR,"synonyms.json")
