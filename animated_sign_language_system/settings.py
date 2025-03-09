@@ -9,15 +9,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NLTK_DATA_DIR = os.path.join(BASE_DIR, 'nltk_data')
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', '3k7=!d39#4@&5a6to&4==j(c^v0(vv91cj5+9e8+d4&+01jb')
+SECRET_KEY = '3k7=!d39#4@&5a6to&4==j(c^v0(vv91cj5+9e8+d4&+01jb'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
+DEBUG = False
 
 ALLOWED_HOSTS = ['.vercel.app', '.now.sh', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
+    'whitenoise.runserver_nostatic',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -29,6 +30,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -61,11 +63,11 @@ WSGI_APPLICATION = 'animated_sign_language_system.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('PGDATABASE', 'railway'),
-        'USER': os.getenv('PGUSER', 'postgres'),
-        'PASSWORD': os.getenv('PGPASSWORD', 'rubXnqkzaIYTFKGDodcIoAqMFMCZXVPV'),
-        'HOST': os.getenv('PGHOST', 'nozomi.proxy.rlwy.net'),
-        'PORT': os.getenv('PGPORT', '31385'),
+        'NAME': 'railway',
+        'USER': 'postgres',
+        'PASSWORD': 'rubXnqkzaIYTFKGDodcIoAqMFMCZXVPV',
+        'HOST': 'nozomi.proxy.rlwy.net',
+        'PORT': '31385',
     }
 }
 
@@ -107,16 +109,15 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'file': {
-            'level': 'ERROR',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'error.log'),
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
         },
     },
     'loggers': {
-        'django': {
-            'handlers': ['file'],
-            'level': 'ERROR',
+        'treasures': {
+            'handlers': ['console'],
+            'level': 'INFO',
             'propagate': True,
         },
     },

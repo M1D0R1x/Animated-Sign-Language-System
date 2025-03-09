@@ -4,29 +4,24 @@
     {
       "src": "animated_sign_language_system/wsgi.py",
       "use": "@vercel/python",
+      "config": { "maxLambdaSize": "15mb", "runtime": "python3.9" }
+    },
+    {
+      "src": "build_files.sh",
+      "use": "@vercel/static-build",
       "config": {
-        "maxLambdaSize": "15mb",
-        "runtime": "python3.9"
+        "distDir": "staticfiles"
       }
     }
   ],
   "routes": [
     {
       "src": "/static/(.*)",
-      "dest": "/staticfiles/$1"
+      "dest": "/static/$1"
     },
     {
       "src": "/(.*)",
       "dest": "animated_sign_language_system/wsgi.py"
     }
-  ],
-  "env": {
-    "DJANGO_SETTINGS_MODULE": "animated_sign_language_system.settings"
-  },
-  "build": {
-    "env": {
-      "PYTHONPATH": "."
-    },
-    "command": "bash build_files.sh"
-  }
+  ]
 }
