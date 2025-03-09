@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = '3k7=!d39#4@&5a6to&4==j(c^v0(vv91cj5+9e8+d4&+01jb'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['.vercel.app', '.now.sh', '127.0.0.1']
 
@@ -23,7 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # 'animated_sign_language_system',
+    'animated_sign_language_system',
 ]
 
 ROOT_URLCONF = 'animated_sign_language_system.urls'
@@ -64,9 +64,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'railway',
         'USER': 'postgres',
-        'PASSWORD': 'rubXnqkzaIYTFKGDodcIoAqMFMCZXVPV',
-        'HOST': 'nozomi.proxy.rlwy.net',
-        'PORT': '31385',
+        'PASSWORD': 'dQINzXeMTbJPtHgmjenOqVHLDdTNUlRE',
+        'HOST': 'caboose.proxy.rlwy.net',
+        'PORT': '51047',
     }
 }
 
