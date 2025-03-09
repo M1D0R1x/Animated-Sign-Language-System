@@ -53,11 +53,9 @@
     </div>
     <div class="split right" style="text-align:center">
         <h2>Sign Language Animation</h2>
-
         <div style="text-align:center; margin-bottom: 25px;">
             <button class="submit" onclick="playPause()">Play/Pause</button>
         </div>
-
         <div style="text-align:center">
             <video id="videoPlayer" width="650" height="400" preload="auto">
                 Your browser does not support HTML5 video.
@@ -122,9 +120,9 @@
             const videos = document.getElementById("list").getElementsByTagName("li");
             videoSource = [];
             for (let j = 0; j < videos.length; j++) {
-                let word = videos[j].getAttribute("data-word"); // Use data-word attribute
-                videoSource[j] = "/static/" + word + ".mp4";
-                console.log("Loading video:", videoSource[j]); // Debug
+                let word = videos[j].getAttribute("data-word");
+                videoSource[j] = "/static/" + word + ".mp4"; // Updated to /static/ without /images/
+                console.log("Loading video:", videoSource[j]);
             }
             currentVideoIndex = 0;
             videoInitialized = true;
@@ -159,7 +157,7 @@
     function playPause() {
         try {
             const videoPlayer = document.getElementById("videoPlayer");
-            console.log("Play/Pause clicked"); // Debug
+            console.log("Play/Pause clicked");
 
             if (!videoInitialized) {
                 initializePlaylist();

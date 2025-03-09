@@ -1,24 +1,29 @@
-from django.http import JsonResponse
-from django.shortcuts import render, redirect
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from django.contrib.auth import login, logout
-from django.contrib.auth.models import User  # Import User model
-from django.contrib.auth import authenticate
-import nltk
-import string 
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-from nltk.corpus import wordnet
-from django.contrib.staticfiles import finders
-from django.contrib.auth.decorators import login_required
-import logging
 import json
-import os
-from django.conf import settings
+import logging
 import re
 
+import logger
+import nltk
+from django.conf import settings
+from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.staticfiles import finders
+from django.http import JsonResponse
+from django.shortcuts import render, redirect
+from nltk.corpus import stopwords
+from nltk.corpus import wordnet
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
 
+# Download required NLTK data
+try:
+    nltk.download('punkt', quiet=True)
+    nltk.download('averaged_perceptron_tagger', quiet=True)
+    nltk.download('stopwords', quiet=True)
+    nltk.download('wordnet', quiet=True)
+except Exception as e:
+    logger.error(f"Failed to download NLTK data: {e}")
 try:
     with open(settings.SYNONYM_PATH, 'r', encoding='utf-8') as f:
         custom_synonyms = json.load(f)
@@ -72,13 +77,22 @@ def animation_view(request):
     if request.method == 'POST':
         try:
             text = request.POST.get('sen')
-            logger.info(f"Received text: '{text}'")  # Debug input
+            logger.info(f"Received text: '{text}'")
             if not text:
                 raise ValueError("No input text provided.")
 
             # Clean text
+            logger.info("Cleaning text...")
             text = re.sub(r'[^a-zA-Z0-9\s]', '', text).lower()
+            logger.info(f"Cleaned text: '{text}'")
+
+            # Tokenize
+            logger.info("Tokenizing text...")
             words = word_tokenize(text)
+            logger.info(f"Tokenized words: {words}")
+
+            # POS tagging
+            logger.info("POS tagging...")
             tagged = nltk.pos_tag(words)
             logger.info(f"Tagged words: {tagged}")
 
@@ -93,9 +107,7 @@ def animation_view(request):
             logger.info(f"Detected tense: {probable_tense}")
 
             # Filter and lemmatize words
-            important_words = {"i", "he", "she", "they", "we", "what", "where", "how", "you", "your", "my", "name",
-                               "hear", "book", "sign", "me", "yes", "no", "not", "this", "it", "we", "us", "our",
-                               "that", "when"}
+            important_words = {"i", "he", "she", "they", "we", "what", "where", "how", "you", "your", "my", "name", "hear", "book", "sign", "me", "yes", "no", "not", "this", "it", "we", "us", "our", "that", "when"}
             stop_words = set(stopwords.words('english')) - important_words
             isl_replacements = {"i": "me"}
             lr = WordNetLemmatizer()
@@ -125,8 +137,9 @@ def animation_view(request):
             synonym_mapping = {}
             processed_words = []
             for w in filtered_words:
-                path = w + ".mp4"
+                path = w + ".mp4"  # No need for /images/ prefix, just the filename
                 animation_path = finders.find(path)
+                logger.info(f"Checking for {path}, found: {animation_path}")
 
                 if animation_path:
                     processed_words.append(w)
@@ -157,7 +170,7 @@ def animation_view(request):
 
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            return render(request, 'animation.html', {'error': "An unexpected error occurred."})
+            return render(request, 'animation.html', {'error': "An unexpected error occurred: " + str(e)})
 
     return render(request, 'animation.html', {'words': [], 'text': '', 'synonym_mapping': {}})
 
