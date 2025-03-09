@@ -18,25 +18,33 @@
             <input type="submit" name="submit" class="submit" value="Submit">
         </form>
 
+        {% if error %}
+            <p style="color: red;">{{ error }}</p>
+        {% endif %}
+
         <br>
         <table cellspacing="25px">
             <tr>
                 <td class="td">The text that you entered is:</td>
-                <td class="td">{{ text }}</td>
+                <td class="td">{{ text|default:"" }}</td>
             </tr>
             <tr>
                 <td class="td">Key words in sentence:</td>
                 <td class="td">
                     <div id="keywordsContainer" style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 8px;">
                         <ul class="td" id="list" style="margin: 0; padding: 0; list-style-type: none;">
-                            {% for word in words %}
-                                <li id="{{ forloop.counter }}" style="margin-right: 8px;">
-                                    {{ word }}
-                                    {% if synonym_mapping|has_key:word %}
-                                        (Synonym: {{ synonym_mapping|get_item:word }})
-                                    {% endif %}
-                                </li>
-                            {% endfor %}
+                            {% if words %}
+                                {% for word in words %}
+                                    <li id="{{ forloop.counter }}" style="margin-right: 8px;" data-word="{{ word }}">
+                                        {{ word }}
+                                        {% if synonym_mapping|has_key:word %}
+                                            (Synonym: {{ synonym_mapping|get_item:word }})
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            {% else %}
+                                <li>No words processed</li>
+                            {% endif %}
                         </ul>
                     </div>
                 </td>
@@ -52,7 +60,6 @@
 
         <div style="text-align:center">
             <video id="videoPlayer" width="650" height="400" preload="auto">
-                <source src="" type="video/mp4">
                 Your browser does not support HTML5 video.
             </video>
         </div>
@@ -60,57 +67,48 @@
 </div>
 
 <script>
-    // WebkitSpeechRecognition API for speech-to-text conversion
     function record() {
         try {
-            var recognition = new webkitSpeechRecognition();
+            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert('Speech recognition is not supported in this browser.');
+                return;
+            }
+            var recognition = new SpeechRecognition();
             recognition.lang = 'en-IN';
-            recognition.continuous = false; // Enable continuous listening
-            recognition.interimResults = false; // Only capture final results
- 	    const TOTAL_DURATION = 10000; // Total time limit in milliseconds
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            const TOTAL_DURATION = 10000;
             let startTime;
-            let fullTranscript = ""; // To accumulate cleaned results
-
-
+            let fullTranscript = "";
 
             recognition.onresult = function(event) {
-                let transcript = event.results[0][0].transcript;
-                // Remove commas and full stops
-                transcript = transcript.replace(/[,.]/g, '');
-                fullTranscript += transcript + " "; // Append cleaned result with a space
-                // Display the cleaned transcript
+                let transcript = event.results[0][0].transcript.replace(/[,.]/g, '');
+                fullTranscript += transcript + " ";
                 document.getElementById('speechToText').value = fullTranscript.trim();
             };
 
             recognition.onerror = function(event) {
                 alert('Speech recognition error: ' + event.error);
-		recognition.stop();
+                recognition.stop();
             };
 
             recognition.onstart = function() {
-                 if (!startTime) {
-                    startTime = Date.now(); // Set start time on first run
-                }
-                const elapsedTime = Date.now() - startTime;
-                if (elapsedTime >= TOTAL_DURATION) {
-                    recognition.stop();
-                }
+                if (!startTime) startTime = Date.now();
+                if (Date.now() - startTime >= TOTAL_DURATION) recognition.stop();
             };
 
             recognition.onend = function() {
-                const elapsedTime = Date.now() - startTime;
-                if (elapsedTime < TOTAL_DURATION) {
-                    // Restart recognition if time limit hasn't been reached
+                if (Date.now() - startTime < TOTAL_DURATION) {
                     recognition.start();
                 } else {
-                    alert('Speech recognition time limit reached and stopped.');
+                    alert('Speech recognition time limit reached.');
                 }
             };
 
-
             recognition.start();
-        }catch (error) {
-            alert('Speech recognition is not supported in this browser.');
+        } catch (error) {
+            alert('Speech recognition failed: ' + error.message);
             console.error(error);
         }
     }
@@ -122,14 +120,16 @@
     function initializePlaylist() {
         try {
             const videos = document.getElementById("list").getElementsByTagName("li");
-            videoSource = []; // Reset the playlist
+            videoSource = [];
             for (let j = 0; j < videos.length; j++) {
-                videoSource[j] = "/static/" + videos[j].innerHTML.trim() + ".mp4";
+                let word = videos[j].getAttribute("data-word"); // Use data-word attribute
+                videoSource[j] = "/static/" + word + ".mp4";
+                console.log("Loading video:", videoSource[j]); // Debug
             }
-            currentVideoIndex = 0; // Reset the current video index
+            currentVideoIndex = 0;
             videoInitialized = true;
         } catch (error) {
-            alert('Error initializing the video playlist. Please check the keywords or video files.');
+            alert('Error initializing playlist: ' + error.message);
             console.error(error);
         }
     }
@@ -151,7 +151,7 @@
             videoPlayer.load();
             videoPlayer.play();
         } catch (error) {
-            alert('Error playing video. Please ensure all resources are available.');
+            alert('Error playing video: ' + error.message);
             console.error(error);
         }
     }
@@ -159,13 +159,17 @@
     function playPause() {
         try {
             const videoPlayer = document.getElementById("videoPlayer");
+            console.log("Play/Pause clicked"); // Debug
 
             if (!videoInitialized) {
                 initializePlaylist();
-                videoPlay(0);
-                videoPlayer.addEventListener('ended', myHandler, false);
+                if (videoSource.length > 0) {
+                    videoPlay(0);
+                    videoPlayer.addEventListener('ended', myHandler, false);
+                } else {
+                    alert("No videos available to play.");
+                }
             } else if (currentVideoIndex >= videoSource.length) {
-                // Reset to start if playlist has finished
                 currentVideoIndex = 0;
                 videoPlay(currentVideoIndex);
             } else if (videoPlayer.paused) {
@@ -174,7 +178,7 @@
                 videoPlayer.pause();
             }
         } catch (error) {
-            alert('Error toggling video playback.');
+            alert('Error toggling playback: ' + error.message);
             console.error(error);
         }
     }
@@ -194,7 +198,7 @@
                 videoPlayer.pause();
             }
         } catch (error) {
-            alert('Error handling video end event.');
+            alert('Error handling video end event: ' + error.message);
             console.error(error);
         }
     }

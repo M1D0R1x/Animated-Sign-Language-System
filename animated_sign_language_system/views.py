@@ -72,28 +72,30 @@ def animation_view(request):
     if request.method == 'POST':
         try:
             text = request.POST.get('sen')
+            logger.info(f"Received text: '{text}'")  # Debug input
             if not text:
                 raise ValueError("No input text provided.")
-            
-            text = re.sub(r'[^a-zA-Z0-9\s]', '', text)
 
-            text = text.lower()
+            # Clean text
+            text = re.sub(r'[^a-zA-Z0-9\s]', '', text).lower()
             words = word_tokenize(text)
             tagged = nltk.pos_tag(words)
+            logger.info(f"Tagged words: {tagged}")
 
-            #  Detect tense BEFORE filtering
+            # Detect tense
             tense = {
-            "future": len([word for word in tagged if word[1] == "MD"]),
-            "present": len([word for word in tagged if word[1] in ["VBP", "VBZ", "VBG"]]),
-            "past": len([word for word in tagged if word[1] in ["VBD", "VBN"]]),
-            "present_continuous": len([word for word in tagged if word[1] == "VBG"]),
+                "future": len([word for word in tagged if word[1] == "MD"]),
+                "present": len([word for word in tagged if word[1] in ["VBP", "VBZ", "VBG"]]),
+                "past": len([word for word in tagged if word[1] in ["VBD", "VBN"]]),
+                "present_continuous": len([word for word in tagged if word[1] == "VBG"]),
             }
-
             probable_tense = max(tense, key=tense.get)
-            logger.info(f"Chosen Tense: {probable_tense}")
+            logger.info(f"Detected tense: {probable_tense}")
 
-            #  Filter and lemmatize words
-            important_words = {"i", "he", "she", "they", "we", "what", "where", "how", "you", "your", "my", "name", "hear", "book", "sign", "me", "yes", "no","not","this","it","we","us","our","that","when"}
+            # Filter and lemmatize words
+            important_words = {"i", "he", "she", "they", "we", "what", "where", "how", "you", "your", "my", "name",
+                               "hear", "book", "sign", "me", "yes", "no", "not", "this", "it", "we", "us", "our",
+                               "that", "when"}
             stop_words = set(stopwords.words('english')) - important_words
             isl_replacements = {"i": "me"}
             lr = WordNetLemmatizer()
@@ -108,28 +110,27 @@ def animation_view(request):
                         filtered_words.append(lr.lemmatize(word, pos='a'))
                     else:
                         filtered_words.append(lr.lemmatize(word))
+            logger.info(f"Filtered words: {filtered_words}")
 
-            #  Insert tense words AFTER filtering
+            # Insert tense words
             if probable_tense == "past" and tense["past"] > 0:
                 filtered_words.insert(0, "Before")
             elif probable_tense == "future" and tense["future"] > 0:
                 filtered_words.insert(0, "Will")
             elif probable_tense == "present_continuous" and tense["present_continuous"] > 0:
                 filtered_words.insert(0, "Now")
-            logger.info(f"Final Processed Words: {filtered_words}")
-            words = filtered_words  # Ensure final processing uses updated list
+            logger.info(f"Words with tense: {filtered_words}")
 
-
-
-            #  Process words for animations
+            # Process words for animations
             synonym_mapping = {}
             processed_words = []
-            for w in words:
+            for w in filtered_words:
                 path = w + ".mp4"
                 animation_path = finders.find(path)
 
                 if animation_path:
                     processed_words.append(w)
+                    logger.info(f"Found animation for '{w}' at {animation_path}")
                 else:
                     synonym = find_synonym(w)
                     if synonym and finders.find(synonym + ".mp4"):
@@ -137,10 +138,12 @@ def animation_view(request):
                         synonym_mapping[w] = synonym
                         logger.info(f"Using synonym '{synonym}' for '{w}'")
                     else:
-                        logger.warning(f"No animation found for '{w}', breaking into letters.")
+                        logger.warning(f"No animation for '{w}', breaking into letters: {list(w)}")
                         processed_words.extend(list(w))
 
-            logger.info(f"Processed Words: {processed_words}")
+            logger.info(f"Final processed words: {processed_words}")
+            if not processed_words:
+                logger.warning("No words to display after processing.")
 
             return render(request, 'animation.html', {
                 'words': processed_words,
@@ -154,10 +157,9 @@ def animation_view(request):
 
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            return render(request, 'animation.html', {'error': "An unexpected error occurred while processing the text."})
+            return render(request, 'animation.html', {'error': "An unexpected error occurred."})
 
-    return render(request, 'animation.html')
-
+    return render(request, 'animation.html', {'words': [], 'text': '', 'synonym_mapping': {}})
 
 
 # Signup view
