@@ -99,7 +99,7 @@ USE_TZ = True
 # Static files configuration
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "public/../static"),  # Ensure this folder exists
+    os.path.join(BASE_DIR, "staticfiles"),  # Ensure this folder exists
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
@@ -110,7 +110,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Custom path for synonyms file
-SYNONYM_PATH = os.path.join(BASE_DIR, "synonyms.json")
+SYNONYM_PATH = os.path.join("synonyms.json")
 
 # Logging configuration to track errors and warnings
 LOGGING = {
