@@ -2,9 +2,21 @@ import os
 import logging
 from pathlib import Path
 
+import nltk
+
 #
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+NLTK_DATA_DIR = os.path.join(BASE_DIR, 'nltk_data')
+nltk.data.path.append(NLTK_DATA_DIR)
+# Download NLTK utilities with error handling
+try:
+    nltk.download('averaged_perceptron_tagger', download_dir=NLTK_DATA_DIR)
+    nltk.download('wordnet', download_dir=NLTK_DATA_DIR)
+    nltk.download('omw-1.4', download_dir=NLTK_DATA_DIR)
+except Exception as e:
+    print(f"Error downloading NLTK resources: {e}")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '3k7=!d39#4@&5a6to&4==j(c^v0(vv91cj5+9e8+d4&+01jb'

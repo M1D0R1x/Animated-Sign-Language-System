@@ -11,6 +11,7 @@ psycopg==3.2.5
 psycopg2-binary==2.9.10
 regex==2024.11.6
 sqlparse==0.5.3
+stopwords==1.0.1
 tqdm==4.67.1
 tzdata==2025.1
 waitress==3.0.2
