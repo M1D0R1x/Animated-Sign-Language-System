@@ -17,11 +17,6 @@ from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
 try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
-
-try:
     with open(settings.SYNONYM_PATH, 'r', encoding='utf-8') as f:
         custom_synonyms = json.load(f)
 except Exception as e:
