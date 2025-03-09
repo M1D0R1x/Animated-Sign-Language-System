@@ -5,8 +5,6 @@ from pathlib import Path
 #
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = Path(__file__).resolve().parent.parent
-# Set up a specific directory for NLTK data (used at runtime if needed)
-NLTK_DATA_DIR = os.path.join(BASE_DIR, 'nltk_data')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '3k7=!d39#4@&5a6to&4==j(c^v0(vv91cj5+9e8+d4&+01jb'
@@ -25,8 +23,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'animated_sign_language_system',
+    # 'animated_sign_language_system',
 ]
+
+ROOT_URLCONF = 'animated_sign_language_system.urls'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -39,7 +39,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'animated_sign_language_system.urls'
 
 TEMPLATES = [
     {
@@ -99,9 +98,15 @@ USE_TZ = True
 # Static files configuration
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"),  # Ensure this folder exists
+    os.path.join("static"),  # Ensure this folder exists
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Custom path for synonyms file
 SYNONYM_PATH = os.path.join(BASE_DIR, "synonyms.json")
