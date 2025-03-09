@@ -13,3 +13,4 @@ sqlparse==0.5.3
 tqdm==4.67.1
 tzdata==2025.1
 waitress==3.0.2
+whitenoise==6.9.0
