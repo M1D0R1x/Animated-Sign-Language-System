@@ -16,14 +16,6 @@ from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
-# Download required NLTK data
-try:
-    nltk.download('punkt', quiet=True)
-    nltk.download('averaged_perceptron_tagger', quiet=True)
-    nltk.download('stopwords', quiet=True)
-    nltk.download('wordnet', quiet=True)
-except Exception as e:
-    logger.error(f"Failed to download NLTK data: {e}")
 try:
     with open(settings.SYNONYM_PATH, 'r', encoding='utf-8') as f:
         custom_synonyms = json.load(f)
