@@ -1,23 +1,19 @@
 import json
 import logging
 import re
-import os
-import nltk
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
-from django.contrib.staticfiles import finders
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect
+from django.shortcuts import render
 from django.templatetags.static import static
 from textblob import TextBlob
 
-# Set NLTK data path
-nltk.data.path.append(os.path.join(os.path.dirname(__file__), '..', 'nltk_data'))
-
 logger = logging.getLogger(__name__)
+
 
 # Load custom synonyms from synonyms.json
 try:
@@ -98,6 +94,7 @@ def detect_tense_with_blob(text):
     probable_tense = max(tense, key=tense.get)
     return probable_tense, tense
 
+
 @login_required(login_url="login")
 def animation_view(request):
     logger.info("Entering animation_view")
@@ -115,9 +112,14 @@ def animation_view(request):
             text = re.sub(r'[^a-zA-Z0-9\s]', '', text).lower()
             logger.info(f"Cleaned text: '{text}'")
 
-            # Detect tense
+            # Detect tense with fallback
             logger.info("Detecting tense...")
-            probable_tense, tense_counts = detect_tense_with_blob(text)
+            try:
+                probable_tense, tense_counts = detect_tense_with_blob(text)
+            except Exception as e:
+                logger.error(f"Error detecting tense with TextBlob: {e}")
+                probable_tense = "present"  # Fallback to present tense
+                tense_counts = {"past": 0, "future": 0, "present_continuous": 0}
             logger.info(f"Probable tense: {probable_tense}")
 
             # Filter and adjust for ISL
@@ -161,23 +163,21 @@ def animation_view(request):
             for w in filtered_words:
                 animation_path = f"animations/{w}.mp4"
                 animation_url = static(animation_path)
-                logger.info(f"Checking for {animation_path}, URL: {animation_url}")
+                logger.info(f"Generated animation URL for '{w}': {animation_url}")
 
-                full_path = finders.find(animation_path)
-                if full_path:
-                    processed_words.append(w)
-                    animation_urls.append(animation_url)
-                else:
-                    synonym = find_synonym(w)
-                    if synonym:
-                        processed_words.append(synonym)
-                        synonym_mapping[w] = synonym
-                        synonym_path = f"animations/{synonym}.mp4"
-                        synonym_url = static(synonym_path)
-                        animation_urls.append(synonym_url)
-                    else:
-                        processed_words.extend(list(w))
-                        animation_urls.extend([None] * len(w))
+                # Assume the animation exists; let the browser handle 404 if it doesn't
+                processed_words.append(w)
+                animation_urls.append(animation_url)
+
+                # Check for synonyms if needed (optional, since we're not verifying file existence)
+                synonym = find_synonym(w)
+                if synonym and w != synonym:  # Only if synonym is different
+                    synonym_path = f"animations/{synonym}.mp4"
+                    synonym_url = static(synonym_path)
+                    logger.info(f"Using synonym '{synonym}' for '{w}', URL: {synonym_url}")
+                    processed_words[-1] = synonym  # Replace the last word with the synonym
+                    animation_urls[-1] = synonym_url  # Replace the URL
+                    synonym_mapping[w] = synonym
 
             logger.info(f"Final processed words: {processed_words}")
             logger.info(f"Animation URLs: {animation_urls}")
@@ -191,10 +191,21 @@ def animation_view(request):
 
         except ValueError as ve:
             logger.error(f"ValueError: {ve}")
-            return render(request, 'animation.html', {'error': str(ve)})
+            return render(request, 'animation.html', {
+                'error': str(ve),
+                'words': [],
+                'text': '',
+                'synonym_mapping': {},
+                'animation_urls': []
+            })
 
         except Exception as e:
             logger.error(f"Unexpected error in animation_view: {e}")
             raise
 
-    return render(request, 'animation.html', {'words': [], 'text': '', 'synonym_mapping': {}, 'animation_urls': []})
+    return render(request, 'animation.html', {
+        'words': [],
+        'text': '',
+        'synonym_mapping': {},
+        'animation_urls': []
+    })

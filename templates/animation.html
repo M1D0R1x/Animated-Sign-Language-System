@@ -4,17 +4,15 @@
 
 {% block content %}
 <div class="animation-content">
-  <div class="split left" style="text-align:center">
+  <div class="split left" style="text-align: center;">
     <h2>Enter Text or Use Mic</h2>
     <br>
     {% if error %}
       <p style="color: red;">{{ error }}</p>
     {% endif %}
-    <form action="" method="post" style="display: flex; align-items: center; gap: 10px;">
+    <form method="post" style="display: flex; align-items: center; gap: 10px;">
       {% csrf_token %}
-      <textarea name="sen" class="mytext" id="speechToText"
-                placeholder="Type here or use the mic"
-                rows="4" cols="50" style="padding: 8px;"></textarea>
+      <textarea name="sen" class="mytext" id="speechToText" placeholder="Type here or use the mic" rows="4" cols="50" style="padding: 8px;"></textarea>
       <button type="button" name="button" class="mic" onclick="record()">
         <img src="{% static 'mic3.png' %}" height="32px" width="38px" alt="Mic">
       </button>
@@ -33,7 +31,7 @@
           <div id="keywordsContainer" style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 8px;">
             <ul class="td" id="list" style="margin: 0; padding: 0; list-style-type: none;">
               {% for word in words %}
-                <li id="{{ forloop.counter }}" style="margin-right: 8px;">
+                <li id="{{ forloop.counter }}" data-index="{{ forloop.counter0 }}" style="margin-right: 8px;">
                   {{ word }}
                   {% if synonym_mapping|has_key:word %}
                     (Synonym: {{ synonym_mapping|get_item:word }})
@@ -48,32 +46,47 @@
       </tr>
     </table>
   </div>
-  <div class="split right" style="text-align:center">
+
+  <div class="split right" style="text-align: center;">
     <h2>Sign Language Animation</h2>
-    <div style="text-align:center; margin-bottom: 25px;">
+    <div style="text-align: center; margin-bottom: 25px;">
       <button class="submit" onclick="playPause()">Play/Pause</button>
     </div>
-    <div style="text-align:center">
-      <video id="videoPlayer" width="650" height="400" preload="auto">
+    <div style="text-align: center;">
+      <video id="videoPlayer" width="650" height="400" preload="auto" controls>
         <source src="" type="video/mp4">
         Your browser does not support HTML5 video.
       </video>
     </div>
+    {% if animation_urls %}
+      <p style="font-size: 12px; color: #666;">Playing animations for: {{ words|join:", " }}</p>
+    {% else %}
+      <p style="font-size: 12px; color: #666;">No animations available.</p>
+    {% endif %}
   </div>
 </div>
 
 <script>
-  // WebkitSpeechRecognition API for speech-to-text conversion
+  // WebkitSpeechRecognition API for speech-to-text conversion with fallback
   function record() {
     try {
-      var recognition = new webkitSpeechRecognition();
+      let recognition;
+      if (window.webkitSpeechRecognition) {
+        recognition = new webkitSpeechRecognition();
+      } else if (window.SpeechRecognition) {
+        recognition = new SpeechRecognition();
+      } else {
+        alert('Speech recognition is not supported in this browser.');
+        return;
+      }
       recognition.lang = 'en-IN';
       recognition.continuous = true;
       recognition.interimResults = false;
 
       recognition.onresult = function(event) {
         clearTimeout(pauseTimeout);
-        document.getElementById('speechToText').value = event.results[0][0].transcript;
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('speechToText').value = transcript;
       };
 
       recognition.onerror = function(event) {
@@ -92,26 +105,31 @@
 
       recognition.start();
     } catch (error) {
-      alert('Speech recognition is not supported in this browser.');
+      alert('Error initializing speech recognition: ' + error.message);
       console.error(error);
     }
   }
 
+  // Initialize video playlist using animation_urls from the server
   let videoSource = [];
   let currentVideoIndex = 0;
   let videoInitialized = false;
 
   function initializePlaylist() {
     try {
-      const videos = document.getElementById("list").getElementsByTagName("li");
       videoSource = [];
-      for (let j = 0; j < videos.length; j++) {
-        videoSource[j] = "{% static '' %}" + videos[j].innerHTML.trim() + ".mp4";
-      }
+      {% for url in animation_urls %}
+        {% if url %}
+          videoSource.push("{{ url|safe }}");
+        {% endif %}
+      {% endfor %}
       currentVideoIndex = 0;
-      videoInitialized = true;
+      videoInitialized = videoSource.length > 0;
+      if (!videoInitialized) {
+        alert('No valid video files found for the given text.');
+      }
     } catch (error) {
-      alert('Error initializing the video playlist. Please check the keywords or video files.');
+      alert('Error initializing the video playlist: ' + error.message);
       console.error(error);
     }
   }
@@ -120,14 +138,17 @@
     try {
       const videoPlayer = document.getElementById("videoPlayer");
       const videoList = document.getElementById("list").getElementsByTagName("li");
-      if (videoNum >= videoSource.length) throw new Error("Video index out of range");
+      if (videoNum >= videoSource.length || videoNum < 0) {
+        throw new Error("Video index out of range");
+      }
+      // Highlight the current word
       for (let item of videoList) {
         item.style.color = "#000000";
         item.style.fontSize = "25px";
       }
       videoList[videoNum].style.color = "#09edc7";
       videoList[videoNum].style.fontSize = "xx-large";
-      videoPlayer.setAttribute("src", videoSource[videoNum]);
+      videoPlayer.src = videoSource[videoNum];
       videoPlayer.load();
       videoPlayer.play();
     } catch (error) {
@@ -141,8 +162,10 @@
       const videoPlayer = document.getElementById("videoPlayer");
       if (!videoInitialized) {
         initializePlaylist();
-        videoPlay(0);
-        videoPlayer.addEventListener('ended', myHandler, false);
+        if (videoInitialized) {
+          videoPlay(0);
+          videoPlayer.addEventListener('ended', myHandler, false);
+        }
       } else if (currentVideoIndex >= videoSource.length) {
         currentVideoIndex = 0;
         videoPlay(currentVideoIndex);
@@ -152,7 +175,7 @@
         videoPlayer.pause();
       }
     } catch (error) {
-      alert('Error toggling video playback.');
+      alert('Error toggling video playback: ' + error.message);
       console.error(error);
     }
   }
@@ -170,9 +193,19 @@
         videoPlayer.pause();
       }
     } catch (error) {
-      alert('Error handling video end event.');
+      alert('Error handling video end event: ' + error.message);
       console.error(error);
     }
   }
+
+  // Initialize on page load if there are animation URLs
+  window.onload = function() {
+    if ({{ animation_urls|length }} > 0) {
+      initializePlaylist();
+      if (videoInitialized) {
+        videoPlay(0);
+      }
+    }
+  };
 </script>
 {% endblock %}
