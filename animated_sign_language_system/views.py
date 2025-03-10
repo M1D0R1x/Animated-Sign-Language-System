@@ -11,13 +11,9 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.staticfiles import finders
 from django.shortcuts import redirect
 from django.shortcuts import render
-from spacy.lang.en.stop_words import STOP_WORDS
+from textblob import TextBlob
 
-import spacy
-from pathlib import Path
-
-model_name = "en"
-nlp = spacy.load(model_name)
+logger = logging.getLogger(__name__)
 
 
 # Load custom synonyms from synonyms.json
@@ -102,36 +98,40 @@ def find_synonym(word):
     synonyms = {"walk": "stroll", "run": "jog"}  # Replace with actual synonym lookup
     return synonyms.get(word.lower())
 
-def detect_tense(doc):
+def detect_tense_with_blob(text):
     """
-    Detect tense using spaCy dependency parsing for more accuracy.
+    Detect tense using TextBlob for lightweight NLP.
     Returns the probable tense and counts for debugging.
     """
+    blob = TextBlob(text)
+    tags = blob.tags
     tense = {"future": 0, "present": 0, "past": 0, "present_continuous": 0}
-    for token in doc:
-        if token.dep_ == "aux" and token.text.lower() in ["will", "shall"]:
+
+    for word, tag in tags:
+        if tag in ["MD"]:  # Modal verbs for future
             tense["future"] += 1
-        elif token.pos_ == "VERB":
-            if token.text.lower().endswith("ed") or token.tag_ == "VBD":  # Past tense verbs
-                tense["past"] += 1
-            elif token.text.lower().endswith("ing") and any(t.text.lower() in ["is", "am", "are"] for t in token.children):
-                tense["present_continuous"] += 1
-            else:
-                tense["present"] += 1
-    probable_tense = max(tense, key=tense.get) if any(tense.values()) else "present"
-    logger.info(f"Detected tense: {probable_tense} with counts: {tense}")
+        elif tag in ["VBD", "VBN"]:  # Past tense verbs
+            tense["past"] += 1
+        elif tag in ["VBG"]:  # Present continuous
+            tense["present_continuous"] += 1
+        else:  # Default to present
+            tense["present"] += 1
+
+    probable_tense = max(tense, key=tense.get)
     return probable_tense, tense
 
 @login_required(login_url="login")
 def animation_view(request):
     """
-    Process text input and convert it to ISL animation representations.
+    Process text input and convert it to ISL animation representations using TextBlob.
     """
     logger.info("Entering animation_view")
+
     if request.method == 'POST':
         try:
             text = request.POST.get('sen')
             logger.info(f"Received text: '{text}'")
+
             if not text:
                 raise ValueError("No input text provided.")
 
@@ -140,15 +140,9 @@ def animation_view(request):
             text = re.sub(r'[^a-zA-Z0-9\s]', '', text).lower()
             logger.info(f"Cleaned text: '{text}'")
 
-            # Tokenize and process with spaCy
-            logger.info("Processing text with spaCy...")
-            doc = nlp(text)
-            tagged = [(token.text, token.pos_) for token in doc]
-            logger.info(f"Tagged words: {tagged}")
-
             # Detect tense
             logger.info("Detecting tense...")
-            probable_tense, tense_counts = detect_tense(doc)
+            probable_tense, tense_counts = detect_tense_with_blob(text)
             logger.info(f"Probable tense: {probable_tense}")
 
             # Filter and adjust for ISL
@@ -158,56 +152,52 @@ def animation_view(request):
                 "name", "hear", "book", "sign", "me", "yes", "no", "not", "this", "it",
                 "we", "us", "our", "that", "when"
             }
-            stop_words = STOP_WORDS - important_words
             isl_replacements = {
                 "i": "me",
                 "hear": "listen",
-                # Add more ISL-specific replacements here based on dictionary or rules
             }
 
+            words = text.split()
             filtered_words = []
-            for token in doc:
-                word = token.text.lower()
-                if word not in stop_words:
-                    word = isl_replacements.get(word, word)
+
+            for word in words:
+                word = isl_replacements.get(word, word)
+                if word in important_words or word.isalnum():
                     filtered_words.append(word)
+
             logger.info(f"Filtered words: {filtered_words}")
 
-            # Insert ISL tense markers (lowercase to match animation filenames)
-            logger.info("Inserting ISL tense markers...")
+            # Insert ISL tense markers
             if probable_tense == "past" and tense_counts["past"] > 0:
                 filtered_words.insert(0, "before")
             elif probable_tense == "future" and tense_counts["future"] > 0:
                 filtered_words.insert(0, "will")
             elif probable_tense == "present_continuous" and tense_counts["present_continuous"] > 0:
                 filtered_words.insert(0, "now")
+
             logger.info(f"Words with tense: {filtered_words}")
 
             # Process words for animations
             logger.info("Processing words for animations...")
             synonym_mapping = {}
             processed_words = []
+
             for w in filtered_words:
-                path = w + ".mp4"
+                path = f"animations/{w}.mp4"
                 animation_path = finders.find(path)
                 logger.info(f"Checking for {path}, found: {animation_path}")
 
                 if animation_path:
                     processed_words.append(w)
-                    logger.info(f"Found animation for '{w}' at {animation_path}")
                 else:
                     synonym = find_synonym(w)
-                    if synonym and finders.find(synonym + ".mp4"):
+                    if synonym:
                         processed_words.append(synonym)
                         synonym_mapping[w] = synonym
-                        logger.info(f"Using synonym '{synonym}' for '{w}'")
                     else:
-                        logger.warning(f"No animation for '{w}', breaking into letters: {list(w)}")
                         processed_words.extend(list(w))
 
             logger.info(f"Final processed words: {processed_words}")
-            if not processed_words:
-                logger.warning("No words to display after processing.")
 
             return render(request, 'animation.html', {
                 'words': processed_words,
@@ -221,6 +211,6 @@ def animation_view(request):
 
         except Exception as e:
             logger.error(f"Unexpected error in animation_view: {e}")
-            raise  # Re-raise for full traceback in logs
+            raise
 
     return render(request, 'animation.html', {'words': [], 'text': '', 'synonym_mapping': {}})
