@@ -121,7 +121,7 @@
             videoSource = [];
             for (let j = 0; j < videos.length; j++) {
                 let word = videos[j].getAttribute("data-word");
-                videoSource[j] = "/static/" + word + ".mp4"; // Updated to /static/ without /images/
+                videoSource[j] = "/assets/" + word + ".mp4";
                 console.log("Loading video:", videoSource[j]);
             }
             currentVideoIndex = 0;

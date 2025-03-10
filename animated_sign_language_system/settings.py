@@ -93,7 +93,7 @@ USE_TZ = True
 # Static files configuration
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"),
+    os.path.join(BASE_DIR, "assets"),
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
@@ -131,3 +131,7 @@ LOGGING = {
 
 # Vercel-specific settings
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+MUX_TOKEN_ID = os.environ.get('MUX_TOKEN_ID', '0a31dc59-06d7-4788-ae96-0e031f54affc')
+MUX_TOKEN_SECRET = os.environ.get('MUX_TOKEN_SECRET', '4tjPx3iBV3X8shr/tNudreJL7Ogdk+1wIo1q5C/IUjbXmuzw7a53JjFoOubb7ZwhN7RzEEhyfwG')
+MUX_STREAM_URL = 'https://stream.mux.com/'
