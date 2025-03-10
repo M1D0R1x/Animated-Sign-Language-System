@@ -2,6 +2,7 @@ asgiref==3.8.1
 averaged_perceptron==0.0.0
 click==8.1.8
 colorama==0.4.6
+dj-database-url==2.3.0
 Django==4.2.20
 joblib==1.4.2
 logger==1.4
@@ -13,6 +14,7 @@ regex==2024.11.6
 sqlparse==0.5.3
 stopwords==1.0.1
 tqdm==4.67.1
+typing_extensions==4.12.2
 tzdata==2025.1
 waitress==3.0.2
 whitenoise==6.9.0
