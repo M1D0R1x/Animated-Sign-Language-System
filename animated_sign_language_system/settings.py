@@ -1,6 +1,8 @@
 import os
 import dj_database_url
 from pathlib import Path
+import nltk
+from django.conf import settings
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -9,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = '3k7=!d39#4@&5a6to&4==j(c^v0(vv91cj5+9e8+d4&+01jb'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False# Set to False for production
+DEBUG = True# Set to False for production
 
 ALLOWED_HOSTS = ['.vercel.app', '.now.sh', '127.0.0.1']
 
@@ -105,9 +107,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom path for synonyms file
 SYNONYM_PATH = os.path.join("synonyms.json")
 
+# Vercel-specific settings
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+
 # MUX Configuration
-MUX_TOKEN_ID = os.environ.get('MUX_TOKEN_ID', 'your-mux-token-id')
-MUX_TOKEN_SECRET = os.environ.get('MUX_TOKEN_SECRET', 'your-mux-token-secret')
+MUX_TOKEN_ID = os.environ.get('MUX_TOKEN_ID', '0a31dc59-06d7-4788-ae96-0e031f54affc')
+MUX_TOKEN_SECRET = os.environ.get('MUX_TOKEN_SECRET', '4tjPx3iBV3X8shr/tNudreJL7Ogdk+1wIo1q5C/IUjbXmuzw7a53JjFoOubb7ZwhN7RzEEhyfwG')
 MUX_STREAM_URL = 'https://stream.mux.com/'
 
 # Logging configuration
@@ -128,10 +134,3 @@ LOGGING = {
         },
     },
 }
-
-# Vercel-specific settings
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-MUX_TOKEN_ID = os.environ.get('MUX_TOKEN_ID', '0a31dc59-06d7-4788-ae96-0e031f54affc')
-MUX_TOKEN_SECRET = os.environ.get('MUX_TOKEN_SECRET', '4tjPx3iBV3X8shr/tNudreJL7Ogdk+1wIo1q5C/IUjbXmuzw7a53JjFoOubb7ZwhN7RzEEhyfwG')
-MUX_STREAM_URL = 'https://stream.mux.com/'

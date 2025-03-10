@@ -2,41 +2,44 @@ import json
 import logging
 import re
 
-import logger
-import nltk
+import spacy
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import UserCreationForm
 from django.contrib.staticfiles import finders
-from django.http import JsonResponse
 from django.shortcuts import render, redirect
-from nltk.corpus import stopwords
-from nltk.corpus import wordnet
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
+from spacy.lang.en.stop_words import STOP_WORDS
 
+
+# Load spaCy model
+nlp = spacy.load("en_core_web_sm")
+
+# Load custom synonyms from synonyms.json
 try:
     with open(settings.SYNONYM_PATH, 'r', encoding='utf-8') as f:
         custom_synonyms = json.load(f)
 except Exception as e:
     custom_synonyms = {}
-    logging.error(f"Could not load synonyms.json: {e}")
-
+    logging.getLogger(__name__).error(f"Could not load synonyms.json: {e}")
 
 # Logging
 logger = logging.getLogger(__name__)
 
 def home_view(request):
+    logger.info("Rendering home view")
     return render(request, 'home.html')
 
 def about_view(request):
+    logger.info("Rendering about view")
     return render(request, 'about.html')
 
 def contact_view(request):
+    logger.info("Rendering contact view")
     return render(request, 'contact.html')
 
-# Load custom synonyms from synonyms.json
 def load_custom_synonyms():
     """Loads custom synonym dictionary from a JSON file."""
     try:
@@ -49,24 +52,93 @@ def load_custom_synonyms():
         logger.error("Error: Invalid JSON format in synonyms.json.")
         return {}
 
-
 custom_synonyms = load_custom_synonyms()
 
 def find_synonym(word):
-    """Finds synonyms of a word using Custom Dictionary first, then WordNet."""
+    """Finds synonyms of a word using Custom Dictionary."""
     if word in custom_synonyms:
         return custom_synonyms[word]
+    return None
 
-    synonyms = []
-    for syn in wordnet.synsets(word):
-        for lemma in syn.lemmas():
-            synonyms.append(lemma.name())
+def login_view(request):
+    if request.method == "POST":
+        form = AuthenticationForm(data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            return redirect("home")  # Adjust "home" to the name of your home URL
+    else:
+        form = AuthenticationForm()
+    return render(request, "login.html", {"form": form})
 
-    return synonyms[0] if synonyms else None  # Return first synonym if exists
+def logout_view(request):
+    logout(request)
+    return redirect('login')
 
+def signup_view(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()  # Save the new user
+            username = form.cleaned_data.get('username')
+            messages.success(request, f'Account created for {username}! You can now log in.')
+            return redirect('login')  # Redirect to the login page after successful signup
+    else:
+        form = UserCreationForm()
+    return render(request, 'signup.html', {'form': form})
+
+def error_404_view(request, exception):
+    return render(request, '404.html', status=404)
+
+def error_500_view(request):
+    return render(request, '500.html', status=500)
+
+import re
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.contrib.staticfiles import finders
+from spacy.lang.en.stop_words import STOP_WORDS
+import spacy
+import logging
+
+# Load spaCy model (ensure this is initialized in your project, e.g., in settings or a module)
+nlp = spacy.load("en_core_web_sm")
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Placeholder for synonym function (define this based on your needs)
+def find_synonym(word):
+    # Example: return a synonym if available, else None
+    synonyms = {"walk": "stroll", "run": "jog"}  # Replace with actual synonym lookup
+    return synonyms.get(word.lower())
+
+def detect_tense(doc):
+    """
+    Detect tense using spaCy dependency parsing for more accuracy.
+    Returns the probable tense and counts for debugging.
+    """
+    tense = {"future": 0, "present": 0, "past": 0, "present_continuous": 0}
+    for token in doc:
+        if token.dep_ == "aux" and token.text.lower() in ["will", "shall"]:
+            tense["future"] += 1
+        elif token.pos_ == "VERB":
+            if token.text.lower().endswith("ed") or token.tag_ == "VBD":  # Past tense verbs
+                tense["past"] += 1
+            elif token.text.lower().endswith("ing") and any(t.text.lower() in ["is", "am", "are"] for t in token.children):
+                tense["present_continuous"] += 1
+            else:
+                tense["present"] += 1
+    probable_tense = max(tense, key=tense.get) if any(tense.values()) else "present"
+    logger.info(f"Detected tense: {probable_tense} with counts: {tense}")
+    return probable_tense, tense
 
 @login_required(login_url="login")
 def animation_view(request):
+    """
+    Process text input and convert it to ISL animation representations.
+    """
+    logger.info("Entering animation_view")
     if request.method == 'POST':
         try:
             text = request.POST.get('sen')
@@ -79,58 +151,55 @@ def animation_view(request):
             text = re.sub(r'[^a-zA-Z0-9\s]', '', text).lower()
             logger.info(f"Cleaned text: '{text}'")
 
-            # Tokenize
-            logger.info("Tokenizing text...")
-            words = word_tokenize(text)
-            logger.info(f"Tokenized words: {words}")
-
-            # POS tagging
-            logger.info("POS tagging...")
-            tagged = nltk.pos_tag(words)
+            # Tokenize and process with spaCy
+            logger.info("Processing text with spaCy...")
+            doc = nlp(text)
+            tagged = [(token.text, token.pos_) for token in doc]
             logger.info(f"Tagged words: {tagged}")
 
             # Detect tense
-            tense = {
-                "future": len([word for word in tagged if word[1] == "MD"]),
-                "present": len([word for word in tagged if word[1] in ["VBP", "VBZ", "VBG"]]),
-                "past": len([word for word in tagged if word[1] in ["VBD", "VBN"]]),
-                "present_continuous": len([word for word in tagged if word[1] == "VBG"]),
-            }
-            probable_tense = max(tense, key=tense.get)
-            logger.info(f"Detected tense: {probable_tense}")
+            logger.info("Detecting tense...")
+            probable_tense, tense_counts = detect_tense(doc)
+            logger.info(f"Probable tense: {probable_tense}")
 
-            # Filter and lemmatize words
-            important_words = {"i", "he", "she", "they", "we", "what", "where", "how", "you", "your", "my", "name", "hear", "book", "sign", "me", "yes", "no", "not", "this", "it", "we", "us", "our", "that", "when"}
-            stop_words = set(stopwords.words('english')) - important_words
-            isl_replacements = {"i": "me"}
-            lr = WordNetLemmatizer()
+            # Filter and adjust for ISL
+            logger.info("Filtering and adjusting for ISL...")
+            important_words = {
+                "i", "he", "she", "they", "we", "what", "where", "how", "you", "your", "my",
+                "name", "hear", "book", "sign", "me", "yes", "no", "not", "this", "it",
+                "we", "us", "our", "that", "when"
+            }
+            stop_words = STOP_WORDS - important_words
+            isl_replacements = {
+                "i": "me",
+                "hear": "listen",
+                # Add more ISL-specific replacements here based on dictionary or rules
+            }
 
             filtered_words = []
-            for word, tag in tagged:
+            for token in doc:
+                word = token.text.lower()
                 if word not in stop_words:
                     word = isl_replacements.get(word, word)
-                    if tag in ['VBG', 'VBD', 'VBZ', 'VBN', 'NN']:
-                        filtered_words.append(lr.lemmatize(word, pos='v'))
-                    elif tag in ['JJ', 'JJR', 'JJS', 'RBR', 'RBS']:
-                        filtered_words.append(lr.lemmatize(word, pos='a'))
-                    else:
-                        filtered_words.append(lr.lemmatize(word))
+                    filtered_words.append(word)
             logger.info(f"Filtered words: {filtered_words}")
 
-            # Insert tense words
-            if probable_tense == "past" and tense["past"] > 0:
-                filtered_words.insert(0, "Before")
-            elif probable_tense == "future" and tense["future"] > 0:
-                filtered_words.insert(0, "Will")
-            elif probable_tense == "present_continuous" and tense["present_continuous"] > 0:
-                filtered_words.insert(0, "Now")
+            # Insert ISL tense markers (lowercase to match animation filenames)
+            logger.info("Inserting ISL tense markers...")
+            if probable_tense == "past" and tense_counts["past"] > 0:
+                filtered_words.insert(0, "before")
+            elif probable_tense == "future" and tense_counts["future"] > 0:
+                filtered_words.insert(0, "will")
+            elif probable_tense == "present_continuous" and tense_counts["present_continuous"] > 0:
+                filtered_words.insert(0, "now")
             logger.info(f"Words with tense: {filtered_words}")
 
             # Process words for animations
+            logger.info("Processing words for animations...")
             synonym_mapping = {}
             processed_words = []
             for w in filtered_words:
-                path = w + ".mp4"  # No need for /images/ prefix, just the filename
+                path = w + ".mp4"
                 animation_path = finders.find(path)
                 logger.info(f"Checking for {path}, found: {animation_path}")
 
@@ -162,70 +231,7 @@ def animation_view(request):
             return render(request, 'animation.html', {'error': str(ve)})
 
         except Exception as e:
-            logger.error(f"Unexpected error: {e}")
-            return render(request, 'animation.html', {'error': "An unexpected error occurred: " + str(e)})
+            logger.error(f"Unexpected error in animation_view: {e}")
+            raise  # Re-raise for full traceback in logs
 
     return render(request, 'animation.html', {'words': [], 'text': '', 'synonym_mapping': {}})
-
-
-# Signup view
-def signup_view(request):
-    if request.method == 'POST':
-        try:
-            form = UserCreationForm(request.POST)
-            if form.is_valid():
-                user = form.save()
-                login(request, user)
-                return redirect('animation')
-            else:
-                return render(request, 'signup.html', {'form': form, 'error': "Invalid signup details."})
-        except Exception as e:
-            logger.error(f"Error during signup: {e}")
-            return render(request, 'signup.html', {'form': UserCreationForm(), 'error': "An unexpected error occurred."})
-    else:
-        return render(request, 'signup.html', {'form': UserCreationForm()})
-
-# Login view
-def login_view(request):
-    if request.method == 'POST':
-        try:
-            form = AuthenticationForm(data=request.POST)
-            if form.is_valid():
-                user = form.get_user()
-                login(request, user)
-                if 'next' in request.POST:
-                    return redirect(request.POST.get('next'))
-                else:
-                    return redirect('animation')
-            else:
-                return render(request, 'login.html', {'form': form, 'error': "Invalid login details."})
-        except Exception as e:
-            logger.error(f"Error during login: {e}")
-            return render(request, 'login.html', {'form': AuthenticationForm(), 'error': "An unexpected error occurred."})
-    else:
-        return render(request, 'login.html', {'form': AuthenticationForm()})
-
-# Logout view
-def logout_view(request):
-    try:
-        logout(request)
-        return redirect("home")
-    except Exception as e:
-        logger.error(f"Error during logout: {e}")
-        return redirect("home")
-
-# Custom 404 error page
-def error_404_view(request, exception):
-    return render(request, '404.html', status=404)
-
-# Custom 500 error page
-def error_500_view(request):
-    return render(request, '500.html', status=500)
-
-# Check if animation exists
-def check_animation(request, word):
-    """Checks if an animation file exists for the given word."""
-    path = word + ".mp4"
-    file_exists = bool(finders.find(path))
-    return JsonResponse({'word': word, 'exists': file_exists})
-    
