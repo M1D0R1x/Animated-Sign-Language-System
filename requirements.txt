@@ -1,3 +1,10 @@
 Django==4.2.20
-spacy==3.8.4
+spacy==3.8.3
 nltk==3.9.1
+packaging==24.2
+psycopg==3.2.5
+waitress==3.0.2
+whitenoise==6.9.0
+dj-database-url==2.3.0
+logger==1.4
+mux_python==4.0.0
