@@ -1,18 +1,13 @@
 import json
 import logging
-import re
 
 import spacy
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.staticfiles import finders
-from django.shortcuts import render, redirect
-from spacy.lang.en.stop_words import STOP_WORDS
-
+from django.shortcuts import redirect
 
 # Load spaCy model
 nlp = spacy.load("en_core_web_sm")
