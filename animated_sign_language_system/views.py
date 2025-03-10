@@ -1,13 +1,18 @@
 import json
 import logging
+import re
 
 import spacy
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.staticfiles import finders
 from django.shortcuts import redirect
+from django.shortcuts import render
+from spacy.lang.en.stop_words import STOP_WORDS
 
 # Load spaCy model
 nlp = spacy.load("en_core_web_sm")
@@ -87,20 +92,6 @@ def error_404_view(request, exception):
 
 def error_500_view(request):
     return render(request, '500.html', status=500)
-
-import re
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from django.contrib.staticfiles import finders
-from spacy.lang.en.stop_words import STOP_WORDS
-import spacy
-import logging
-
-# Load spaCy model (ensure this is initialized in your project, e.g., in settings or a module)
-nlp = spacy.load("en_core_web_sm")
-
-# Configure logging
-logger = logging.getLogger(__name__)
 
 # Placeholder for synonym function (define this based on your needs)
 def find_synonym(word):

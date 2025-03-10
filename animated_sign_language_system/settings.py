@@ -1,9 +1,7 @@
 import os
 import dj_database_url
 from pathlib import Path
-import nltk
-from django.conf import settings
-import django.contrib.staticfiles
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -128,7 +126,7 @@ LOGGING = {
         },
     },
     'loggers': {
-        'treasures': {
+        'animated_sign_language_system': {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': True,
