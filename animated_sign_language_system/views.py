@@ -2,7 +2,6 @@ import json
 import logging
 import re
 
-import spacy
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
@@ -14,8 +13,15 @@ from django.shortcuts import redirect
 from django.shortcuts import render
 from spacy.lang.en.stop_words import STOP_WORDS
 
-# Load spaCy model
-nlp = spacy.load("en_core_web_sm")
+import spacy
+from pathlib import Path
+
+model_name = "en_core_web_sm"
+if not spacy.util.is_package(model_name):
+    spacy.cli.download(model_name)
+
+nlp = spacy.load(model_name)
+
 
 # Load custom synonyms from synonyms.json
 try:
