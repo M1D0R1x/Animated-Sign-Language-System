@@ -1,20 +1,23 @@
 import json
 import logging
 import re
+import os
+import nltk
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.staticfiles import finders
-from django.shortcuts import redirect
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.templatetags.static import static
 from textblob import TextBlob
 
-logger = logging.getLogger(__name__)
+# Set NLTK data path
+nltk.data.path.append(os.path.join(os.path.dirname(__file__), '..', 'nltk_data'))
 
+logger = logging.getLogger(__name__)
 
 # Load custom synonyms from synonyms.json
 try:
@@ -22,14 +25,14 @@ try:
         custom_synonyms = json.load(f)
 except Exception as e:
     custom_synonyms = {}
-    logging.getLogger(__name__).error(f"Could not load synonyms.json: {e}")
-
-# Logging
-logger = logging.getLogger(__name__)
+    logger.error(f"Could not load synonyms.json: {e}")
 
 def home_view(request):
     logger.info("Rendering home view")
-    return render(request, 'home.html')
+    return render(request, 'home.html', {
+        'entered_text': '',
+        'keywords': [],
+    })
 
 def about_view(request):
     logger.info("Rendering about view")
@@ -39,33 +42,13 @@ def contact_view(request):
     logger.info("Rendering contact view")
     return render(request, 'contact.html')
 
-def load_custom_synonyms():
-    """Loads custom synonym dictionary from a JSON file."""
-    try:
-        with open(settings.SYNONYM_PATH, "r", encoding="utf-8") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        logger.error("Error: synonyms.json not found.")
-        return {}
-    except json.JSONDecodeError:
-        logger.error("Error: Invalid JSON format in synonyms.json.")
-        return {}
-
-custom_synonyms = load_custom_synonyms()
-
-def find_synonym(word):
-    """Finds synonyms of a word using Custom Dictionary."""
-    if word in custom_synonyms:
-        return custom_synonyms[word]
-    return None
-
 def login_view(request):
     if request.method == "POST":
         form = AuthenticationForm(data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect("home")  # Adjust "home" to the name of your home URL
+            return redirect("home")
     else:
         form = AuthenticationForm()
     return render(request, "login.html", {"form": form})
@@ -78,10 +61,10 @@ def signup_view(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
-            form.save()  # Save the new user
+            form.save()
             username = form.cleaned_data.get('username')
             messages.success(request, f'Account created for {username}! You can now log in.')
-            return redirect('login')  # Redirect to the login page after successful signup
+            return redirect('login')
     else:
         form = UserCreationForm()
     return render(request, 'signup.html', {'form': form})
@@ -92,29 +75,24 @@ def error_404_view(request, exception):
 def error_500_view(request):
     return render(request, '500.html', status=500)
 
-# Placeholder for synonym function (define this based on your needs)
 def find_synonym(word):
-    # Example: return a synonym if available, else None
-    synonyms = {"walk": "stroll", "run": "jog"}  # Replace with actual synonym lookup
-    return synonyms.get(word.lower())
+    """Finds synonyms of a word using Custom Dictionary."""
+    return custom_synonyms.get(word.lower())
 
 def detect_tense_with_blob(text):
-    """
-    Detect tense using TextBlob for lightweight NLP.
-    Returns the probable tense and counts for debugging.
-    """
+    """Detect tense using TextBlob for lightweight NLP."""
     blob = TextBlob(text)
     tags = blob.tags
     tense = {"future": 0, "present": 0, "past": 0, "present_continuous": 0}
 
     for word, tag in tags:
-        if tag in ["MD"]:  # Modal verbs for future
+        if tag in ["MD"]:
             tense["future"] += 1
-        elif tag in ["VBD", "VBN"]:  # Past tense verbs
+        elif tag in ["VBD", "VBN"]:
             tense["past"] += 1
-        elif tag in ["VBG"]:  # Present continuous
+        elif tag in ["VBG"]:
             tense["present_continuous"] += 1
-        else:  # Default to present
+        else:
             tense["present"] += 1
 
     probable_tense = max(tense, key=tense.get)
@@ -122,9 +100,6 @@ def detect_tense_with_blob(text):
 
 @login_required(login_url="login")
 def animation_view(request):
-    """
-    Process text input and convert it to ISL animation representations using TextBlob.
-    """
     logger.info("Entering animation_view")
 
     if request.method == 'POST':
@@ -181,28 +156,37 @@ def animation_view(request):
             logger.info("Processing words for animations...")
             synonym_mapping = {}
             processed_words = []
+            animation_urls = []
 
             for w in filtered_words:
-                path = f"animations/{w}.mp4"
-                animation_path = finders.find(path)
-                logger.info(f"Checking for {path}, found: {animation_path}")
+                animation_path = f"animations/{w}.mp4"
+                animation_url = static(animation_path)
+                logger.info(f"Checking for {animation_path}, URL: {animation_url}")
 
-                if animation_path:
+                full_path = finders.find(animation_path)
+                if full_path:
                     processed_words.append(w)
+                    animation_urls.append(animation_url)
                 else:
                     synonym = find_synonym(w)
                     if synonym:
                         processed_words.append(synonym)
                         synonym_mapping[w] = synonym
+                        synonym_path = f"animations/{synonym}.mp4"
+                        synonym_url = static(synonym_path)
+                        animation_urls.append(synonym_url)
                     else:
                         processed_words.extend(list(w))
+                        animation_urls.extend([None] * len(w))
 
             logger.info(f"Final processed words: {processed_words}")
+            logger.info(f"Animation URLs: {animation_urls}")
 
             return render(request, 'animation.html', {
                 'words': processed_words,
                 'text': text,
-                'synonym_mapping': synonym_mapping
+                'synonym_mapping': synonym_mapping,
+                'animation_urls': animation_urls
             })
 
         except ValueError as ve:
@@ -213,4 +197,4 @@ def animation_view(request):
             logger.error(f"Unexpected error in animation_view: {e}")
             raise
 
-    return render(request, 'animation.html', {'words': [], 'text': '', 'synonym_mapping': {}})
+    return render(request, 'animation.html', {'words': [], 'text': '', 'synonym_mapping': {}, 'animation_urls': []})
