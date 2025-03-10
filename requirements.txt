@@ -5,4 +5,3 @@ psycopg==3.2.5
 psycopg2-binary==2.9.10
 waitress==3.0.2
 whitenoise==6.9.0
-mux_python==4.0.0

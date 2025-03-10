@@ -16,7 +16,7 @@ from spacy.lang.en.stop_words import STOP_WORDS
 import spacy
 from pathlib import Path
 
-model_name = "en_core_web_sm"
+model_name = "en"
 if not spacy.util.is_package(model_name):
     spacy.cli.download(model_name)
 
