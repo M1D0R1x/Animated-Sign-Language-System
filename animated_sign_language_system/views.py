@@ -17,9 +17,6 @@ import spacy
 from pathlib import Path
 
 model_name = "en"
-if not spacy.util.is_package(model_name):
-    spacy.cli.download(model_name)
-
 nlp = spacy.load(model_name)
 
 
